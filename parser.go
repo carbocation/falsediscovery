@@ -30,6 +30,7 @@ func (v *Value) Significant() bool {
 	return false
 }
 
+// By way of https://play.golang.org/p/UwR9nF1kv_
 func GuessDelimiter(lines []string) rune {
 	if len(lines) < 2 {
 		return ' '
@@ -57,6 +58,7 @@ func GuessDelimiter(lines []string) rune {
 	return ' '
 }
 
+// By way of https://play.golang.org/p/UwR9nF1kv_
 func Parse(line []rune, d rune) int {
 	field := 1
 	inQuote := false

@@ -1,6 +1,7 @@
 package falsediscovery
 
 import (
+	"fmt"
 	"math/rand"
 	"os"
 	"strconv"
@@ -75,8 +76,14 @@ Six,0.11`, divider: "comma"},
 	for _, input := range inputs {
 		t.Run(input.divider, func(t *testing.T) {
 			values, err := ParseDelimitedInput(input.input)
-			if err != nil {
-				t.Error(err)
+			if input.divider == "mixed-space" {
+				if err == nil {
+					t.Error(fmt.Errorf("mixed-space should not be parsed correctly"))
+				}
+			} else {
+				if err != nil {
+					t.Error(err)
+				}
 			}
 
 			significanceHelper(t, FDR, values)
