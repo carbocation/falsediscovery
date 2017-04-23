@@ -123,15 +123,21 @@ func ParseDelimitedInput(input string) ([]*Value, error) {
 	return values, nil
 }
 
-// Detects first field with . as p Value, first field without . as ID
-func detectFields(input []string) (idField, pField int) {
+// Detects first field without . as ID
+// first field with . as p Value,
+func detectFields(input []string) (int, int) {
+	idField, pField := -1, -1
+
 	for k, v := range input {
-		if _, err := strconv.ParseFloat(v, 64); err == nil && pField == 0 {
+		// First check for integers, which should be an ID field
+		if _, err := strconv.ParseInt(v, 10, 64); err == nil && idField == -1 {
+			idField = k
+		} else if _, err := strconv.ParseFloat(v, 64); err == nil && pField == -1 {
 			pField = k
-		} else if idField == 0 {
+		} else if idField == -1 {
 			idField = k
 		}
 	}
 
-	return
+	return idField, pField
 }
