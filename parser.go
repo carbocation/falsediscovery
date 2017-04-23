@@ -30,6 +30,10 @@ func (v *Value) Significant() bool {
 	return false
 }
 
+func (v *Value) CriticalValue() float64 {
+	return v.criticalValue
+}
+
 // By way of https://play.golang.org/p/UwR9nF1kv_
 func GuessDelimiter(lines []string) rune {
 	if len(lines) < 2 {
