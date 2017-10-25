@@ -9,13 +9,22 @@ import (
 )
 
 type Value struct {
-	ID            string
-	pValue        float64
-	criticalValue float64
+	ID             string
+	pValue         float64
+	criticalValue  float64
+	adjustedPValue float64
+}
+
+func (v *Value) SetAdjustedPValue(in float64) {
+	v.adjustedPValue = in
 }
 
 func (v *Value) SetCriticalValue(in float64) {
 	v.criticalValue = in
+}
+
+func (v *Value) AdjustedP() float64 {
+	return v.adjustedPValue
 }
 
 func (v *Value) P() float64 {

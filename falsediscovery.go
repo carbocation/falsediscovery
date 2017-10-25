@@ -8,6 +8,7 @@ import (
 type TestStatistic interface {
 	P() float64
 	SetCriticalValue(in float64)
+	SetAdjustedPValue(in float64)
 }
 
 /*
@@ -31,6 +32,7 @@ func BenjaminiHochberg(FDR float64, pValues ...TestStatistic) error {
 	nTests := len(pValues)
 	for k := range pValues {
 		pValues[k].SetCriticalValue(float64(1+k) / float64(nTests) * FDR)
+		pValues[k].SetAdjustedPValue(float64(nTests) / float64(1+k) * pValues[k].P())
 	}
 
 	return nil
