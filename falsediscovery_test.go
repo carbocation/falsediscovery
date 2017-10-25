@@ -53,6 +53,84 @@ func TestBenjaminiHochberg(t *testing.T) {
 	}
 }
 
+func TestAdjustedP(t *testing.T) {
+	inputs := []struct {
+		name     string
+		input    string
+		expected map[string]float64
+	}{
+		{
+			`insig`,
+			`A 0.01
+B 0.03
+C 0.05
+D 0.12
+E 0.2
+F 0.3`,
+			map[string]float64{"A": 0.06, "B": 0.09, "C": 0.10, "D": 0.18, "E": 0.24, "F": 0.3},
+		},
+	}
+
+	for _, v := range inputs {
+		t.Run(v.name, func(t *testing.T) {
+			FDR := 0.05
+			values, err := ParseDelimitedInput(v.input)
+			if err != nil {
+				t.Error(err)
+			}
+
+			tStats := ValuesToTestStatistics(values)
+			if err := BenjaminiHochberg(FDR, tStats...); err != nil {
+				t.Error(err)
+			}
+
+			for _, stat := range tStats {
+				value := stat.(*Value)
+				if value.AdjustedP() != v.expected[value.ID] {
+					t.Error(value.AdjustedP(), "is not equal to", v.expected[value.ID])
+				}
+			}
+		})
+	}
+}
+
+func TestChangedDelimiter(t *testing.T) {
+	input := `A 0.2
+B 0.3
+C,0.25`
+	_, err := ParseDelimitedInput(input)
+	if err == nil {
+		t.Error("Should have detected an issue with a change in the delimiter")
+	}
+}
+func TestNoPValueInFirstLine(t *testing.T) {
+	input := `A X
+B 0.3
+C`
+	_, err := ParseDelimitedInput(input)
+	if err == nil {
+		t.Error("Should have detected the lack of P value in the first line")
+	}
+}
+
+func TestDetectFieldsMissingID(t *testing.T) {
+	input := []string{`0.025`}
+	_, _, err := detectFields(input)
+	if err == nil {
+		t.Error("Should have detected the lack of ID in the first line")
+	}
+}
+
+func TestNoPValueInSubsequentLine(t *testing.T) {
+	input := `A 0.02
+B 0.2
+C X`
+	_, err := ParseDelimitedInput(input)
+	if err == nil {
+		t.Error("Should have detected the lack of P value in the third line")
+	}
+}
+
 func TestDelimiterDetector(t *testing.T) {
 	FDR := 0.05
 	inputs := []struct {
@@ -105,7 +183,7 @@ func significanceHelper(t *testing.T, FDR float64, values []*Value) {
 	for _, v := range values {
 		if v.Significant() {
 			any = true
-			t.Log(v.ID, v.P(), v.criticalValue, v.Significant())
+			t.Log(v.ID, v.P(), v.CriticalValue(), v.Significant())
 		}
 	}
 

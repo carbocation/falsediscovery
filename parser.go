@@ -87,10 +87,8 @@ func GuessDelimiter(lines []string) (rune, error) {
 				continue
 			}
 
-			if len(fields) != nFields {
-				acceptComma = false
-				break
-			}
+			// Note that we have not configured the CSV reader to permit a variable number
+			// of fields, so nFields cannot be unequal to len(fields) at this point.
 		}
 
 		if acceptComma {
@@ -135,12 +133,8 @@ func ParseDelimitedInput(input string) ([]*Value, error) {
 			}
 		}
 
-		// If the line is shorter than both the id field and the p field, then
-		// it cannot contain both, and must be skipped
-		if len(rec) < idField+1 && len(rec) < pField+1 {
-			continue
-		}
-
+		// Because the CSV parser requires that all lines have the same field count,
+		// we don't need to check that fields pField and idField exist at this point.
 		pV, err := strconv.ParseFloat(rec[pField], 64)
 		if err != nil {
 			return nil, err
@@ -152,8 +146,8 @@ func ParseDelimitedInput(input string) ([]*Value, error) {
 	return values, nil
 }
 
-// Detects first field without . as ID
-// Detects first field with . as p Value,
+// Detects first field which can be parsed as a float as the p Value
+//
 func detectFields(input []string) (int, int, error) {
 	idField, pField := -1, -1
 
@@ -161,10 +155,15 @@ func detectFields(input []string) (int, int, error) {
 		// First check for integers, which should be an ID field
 		if _, err := strconv.ParseInt(v, 10, 64); err == nil && idField == -1 {
 			idField = k
-		} else if _, err := strconv.ParseFloat(v, 64); err == nil && pField == -1 {
+			continue
+		}
+		if _, err := strconv.ParseFloat(v, 64); err == nil && pField == -1 {
 			pField = k
-		} else if idField == -1 {
+			continue
+		}
+		if idField == -1 {
 			idField = k
+			continue
 		}
 	}
 
