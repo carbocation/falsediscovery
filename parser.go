@@ -34,62 +34,76 @@ func (v *Value) CriticalValue() float64 {
 	return v.criticalValue
 }
 
-// By way of https://play.golang.org/p/UwR9nF1kv_
-func GuessDelimiter(lines []string) rune {
-	if len(lines) < 2 {
-		return ' '
+// GuessDelimiter identifies the most likely
+// field delimiter from input, from the possible
+// options of " ,\t|	"
+func GuessDelimiter(lines []string) (rune, error) {
+	// Check up to this many lines
+	tryThisMany := len(lines)
+	if tryThisMany > 5 {
+		tryThisMany = 5
 	}
-	for _, c := range " ,\t|" {
-		followStd := true
-		std := Parse([]rune(lines[0]), c)
-		if std < 2 {
-			// Must have at least 2 fields for our purposes
-			continue
-		}
-		//fmt.Println(std)
-		for i := 1; i < len(lines); i++ {
-			if std != Parse([]rune(lines[i]), c) {
-				//fmt.Println(Parse(lines[i], c))
-				followStd = false
+
+	input := strings.Join(lines, "\n")
+
+	for _, comma := range " ,\t|	" {
+		c := csv.NewReader(strings.NewReader(input))
+		c.Comma = comma
+
+		acceptComma := true
+
+		nFields := -1
+		for i := 0; i < tryThisMany; i++ {
+			fields, err := c.Read()
+			if err != nil {
+				// If the first two lines agreed, we'll call this the delimiter
+				if i >= 2 {
+					return comma, nil
+				}
+
+				// If not even the first two lines agreed, try another delimiter
+				acceptComma = false
 				break
 			}
-			//fmt.Println(lines[i], i)
-		}
-		if followStd {
-			return c
-		}
-	}
-	return ' '
-}
 
-// By way of https://play.golang.org/p/UwR9nF1kv_
-func Parse(line []rune, d rune) int {
-	field := 1
-	inQuote := false
-	for i := 0; i < len(line); i++ {
-		if line[i] == '"' {
-			if i == len(line)-1 || line[i+1] != '"' {
-				inQuote = !inQuote
-				continue
-			} else {
-				i++
+			if i == 0 {
+				nFields = len(fields)
+
+				// Must be at least a field for p value and for ID (2 fields) or more
+				if nFields < 2 {
+					acceptComma = false
+					break
+				}
+
 				continue
 			}
+
+			if len(fields) != nFields {
+				acceptComma = false
+				break
+			}
 		}
-		if !inQuote && line[i] == d {
-			field++
+
+		if acceptComma {
+			return comma, nil
 		}
 	}
-	return field
+
+	// No comma could be detected
+	return ' ', fmt.Errorf("No valid delimiter could be identified")
 }
 
+// ParseDelimitedInput takes a string which is composed of
+// one record per line, then guesses the delimiter to try
+// to identify the P value and the field identifier.
+// It then performs FDR, and returns the FDR calculations
+// for each detected value.
 func ParseDelimitedInput(input string) ([]*Value, error) {
-	// TODO: Use a better detector of delimiters. For example, should
-	// be able to detect spaces as the delimiter even if there is a
-	// variable number of spaces between fields.
-
 	lines := strings.Split(input, "\n")
-	delim := GuessDelimiter(lines)
+	delim, err := GuessDelimiter(lines)
+	if err != nil {
+		return nil, err
+	}
 
 	c := csv.NewReader(strings.NewReader(input))
 	c.Comma = delim
@@ -100,16 +114,22 @@ func ParseDelimitedInput(input string) ([]*Value, error) {
 		rec, err := c.Read()
 		if err == io.EOF {
 			break
-		}
-		if err != nil {
+		} else if err != nil {
 			return nil, err
 		}
 
-		if idField == pField {
-			idField, pField = detectFields(rec)
-			if idField == pField {
-				return nil, fmt.Errorf("Could not detect ID and p-Value fields")
+		// Initialize with detection of the ID and P-value fields
+		if idField == -1 && idField == pField {
+			idField, pField, err = detectFields(rec)
+			if err != nil {
+				return nil, fmt.Errorf("Error in line %d of the input: %s", len(values)+1, err)
 			}
+		}
+
+		// If the line is shorter than both the id field and the p field, then
+		// it cannot contain both, and must be skipped
+		if len(rec) < idField+1 && len(rec) < pField+1 {
+			continue
 		}
 
 		pV, err := strconv.ParseFloat(rec[pField], 64)
@@ -124,8 +144,8 @@ func ParseDelimitedInput(input string) ([]*Value, error) {
 }
 
 // Detects first field without . as ID
-// first field with . as p Value,
-func detectFields(input []string) (int, int) {
+// Detects first field with . as p Value,
+func detectFields(input []string) (int, int, error) {
 	idField, pField := -1, -1
 
 	for k, v := range input {
@@ -139,5 +159,13 @@ func detectFields(input []string) (int, int) {
 		}
 	}
 
-	return idField, pField
+	if idField == -1 {
+		return idField, pField, fmt.Errorf("Could not detect ID field")
+	}
+
+	if pField == -1 {
+		return idField, pField, fmt.Errorf("Could not detect P-value field")
+	}
+
+	return idField, pField, nil
 }
