@@ -116,8 +116,8 @@ C`
 func TestDetectFieldsMissingID(t *testing.T) {
 	input := []string{`0.025`}
 	_, _, err := detectFields(input)
-	if err == nil {
-		t.Error("Should have detected the lack of ID in the first line")
+	if err != nil {
+		t.Error("Should have tolerated the lack of ID field")
 	}
 }
 

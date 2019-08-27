@@ -106,9 +106,22 @@ func GuessDelimiter(lines []string) (rune, error) {
 // It then performs FDR, and returns the FDR calculations
 // for each detected value.
 func ParseDelimitedInput(input string) ([]*Value, error) {
-	lines := strings.Split(input, "\n")
+	// Line breaks in browser can be \r\n https://stackoverflow.com/a/14217315/199475
+
+	// So: https://stackoverflow.com/a/54165816/199475
+	lines := strings.Split(strings.Replace(input, "\r\n", "\n", -1), "\n")
+
 	delim, err := GuessDelimiter(lines)
-	if err != nil {
+	if err != nil && len(lines) > 0 {
+		if _, err2 := strconv.ParseFloat(lines[0], 64); err2 != nil {
+			// Return the original error if the line isn't a pure number
+			return nil, fmt.Errorf("%v => %v", err, err2)
+		} else {
+			// The line is just a number. Maybe there is no identifier
+			delim = ','
+			err = nil
+		}
+	} else if err != nil {
 		return nil, err
 	}
 
@@ -140,7 +153,11 @@ func ParseDelimitedInput(input string) ([]*Value, error) {
 			return nil, err
 		}
 
-		values = append(values, &Value{pValue: pV, ID: rec[idField]})
+		if idField < 0 {
+			values = append(values, &Value{pValue: pV, ID: ""})
+		} else {
+			values = append(values, &Value{pValue: pV, ID: rec[idField]})
+		}
 	}
 
 	return values, nil
@@ -167,9 +184,10 @@ func detectFields(input []string) (int, int, error) {
 		}
 	}
 
-	if idField == -1 {
-		return idField, pField, fmt.Errorf("Could not detect ID field")
-	}
+	// Tolerate a missing idField
+	// if idField == -1 {
+	// 	return idField, pField, fmt.Errorf("Could not detect ID field")
+	// }
 
 	if pField == -1 {
 		return idField, pField, fmt.Errorf("Could not detect P-value field")
