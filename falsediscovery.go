@@ -2,6 +2,7 @@ package falsediscovery
 
 import (
 	"fmt"
+	"math"
 	"sort"
 )
 
@@ -32,7 +33,11 @@ func BenjaminiHochberg(FDR float64, pValues ...TestStatistic) error {
 	nTests := len(pValues)
 	for k := range pValues {
 		pValues[k].SetCriticalValue(float64(1+k) / float64(nTests) * FDR)
-		pValues[k].SetAdjustedPValue(float64(nTests) / float64(1+k) * pValues[k].P())
+
+		// Choosing the min of 1 and the Q value is similar to other
+		// implementations, e.g.,
+		// https://github.com/StoreyLab/qvalue/blob/master/R/qvalue.R#L118
+		pValues[k].SetAdjustedPValue(math.Min(1.0, float64(nTests)/float64(1+k)*pValues[k].P()))
 	}
 
 	return nil
