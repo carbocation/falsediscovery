@@ -2,11 +2,14 @@ package falsediscovery
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"strconv"
 	"testing"
 )
+
+const TestEpsilon = 0.0000001
 
 func TestMain(m *testing.M) {
 	rand.Seed(31337)
@@ -69,6 +72,22 @@ E 0.2
 F 0.3`,
 			map[string]float64{"A": 0.06, "B": 0.09, "C": 0.10, "D": 0.18, "E": 0.24, "F": 0.3},
 		},
+		{
+			`insig`,
+			`A 0.001052588
+B 0.002887613
+C 0.004249
+D 0.2431061
+E 0.4909836
+F 0.589325`,
+			map[string]float64{
+				"A": 0.006315528,
+				"B": 0.008498000,
+				"C": 0.008498000,
+				"D": 0.364659150,
+				"E": 0.589180320,
+				"F": 0.589325000},
+		},
 	}
 
 	for _, v := range inputs {
@@ -84,10 +103,10 @@ F 0.3`,
 				t.Error(err)
 			}
 
-			for _, stat := range tStats {
+			for id, stat := range tStats {
 				value := stat.(*Value)
-				if value.AdjustedP() != v.expected[value.ID] {
-					t.Error(value.AdjustedP(), "is not equal to", v.expected[value.ID])
+				if math.Abs(value.AdjustedP()-v.expected[value.ID]) > TestEpsilon {
+					t.Error("Entry", id, value.AdjustedP(), "is not equal to", v.expected[value.ID])
 				}
 			}
 		})
