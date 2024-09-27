@@ -45,9 +45,9 @@ func TestBenjaminiHochberg(t *testing.T) {
 
 	any := false
 	for _, v := range pValues {
-		if v.Significant() {
+		if v.Significant(FDR) {
 			any = true
-			t.Log(v.ID, v.P(), v.criticalValue, v.Significant())
+			t.Log(v.ID, v.P(), v.criticalValue, v.Significant(FDR))
 		}
 	}
 
@@ -128,6 +128,12 @@ H 0.883128442`,
 				value := stat.(*Value)
 				if math.Abs(value.AdjustedP()-v.expected[value.ID]) > TestEpsilon {
 					t.Error("Entry", id, value.AdjustedP(), "is not equal to", v.expected[value.ID])
+				}
+				if value.AdjustedP() < FDR && !value.Significant(FDR) {
+					t.Error("Entry", id, value.AdjustedP(), "had P <", FDR, "but value.Significant() was false")
+				}
+				if value.AdjustedP() < FDR && value.CriticalValue() >= FDR {
+					t.Error("Entry", id, value.AdjustedP(), "had P <", FDR, "but value.CriticalValue() was", value.CriticalValue())
 				}
 			}
 		})
@@ -221,9 +227,9 @@ func significanceHelper(t *testing.T, FDR float64, values []*Value) {
 
 	any := false
 	for _, v := range values {
-		if v.Significant() {
+		if v.Significant(FDR) {
 			any = true
-			t.Log(v.ID, v.P(), v.CriticalValue(), v.Significant())
+			t.Log(v.ID, v.P(), v.CriticalValue(), v.Significant(FDR))
 		}
 	}
 

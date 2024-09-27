@@ -31,12 +31,8 @@ func (v *Value) P() float64 {
 	return v.pValue
 }
 
-func (v *Value) Significant() bool {
-	if v.pValue < v.criticalValue {
-		return true
-	}
-
-	return false
+func (v *Value) Significant(FDR float64) bool {
+	return v.adjustedPValue < FDR
 }
 
 func (v *Value) CriticalValue() float64 {
@@ -164,7 +160,6 @@ func ParseDelimitedInput(input string) ([]*Value, error) {
 }
 
 // Detects first field which can be parsed as a float as the p Value
-//
 func detectFields(input []string) (int, int, error) {
 	idField, pField := -1, -1
 
